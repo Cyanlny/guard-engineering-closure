@@ -58,12 +58,6 @@ CAPABILITIES = {
     "validation_ladder",
     "vcs",
 }
-AUTHORITY_TOKENS = (
-    "CANDIDATE_AUTHORIZED",
-    "PROTOCOL_AUTHORIZED",
-    "AUTHORITY_DECISION_ACTIVATED",
-    "PATH_SELECTED",
-)
 
 
 def _run(argv: list[str], cwd: Path) -> bytes:
@@ -290,86 +284,6 @@ def _normalize(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _max(events: list[Any], field: str) -> int:
-    values = [
-        event[field]
-        for event in events
-        if isinstance(event, dict)
-        and isinstance(event.get(field), int)
-        and not isinstance(event[field], bool)
-    ]
-    return max(values, default=0)
-
-
-def _identifier(value: Any) -> str:
-    if isinstance(value, str):
-        return value
-    if isinstance(value, dict):
-        return next(
-            (value[k] for k in ("blocker_id", "id", "reason_code") if isinstance(value.get(k), str)),
-            "OBJECT_WITHOUT_ID",
-        )
-    return str(value)
-
-
-def _v21(path: Path) -> dict[str, Any]:
-    state = _strict_json_text(path.read_text(encoding="utf-8"), "V21 run state")
-    events = state.get("event_chain") if isinstance(state.get("event_chain"), list) else []
-    types = [str(e.get("event_type", "")) for e in events if isinstance(e, dict)]
-    blockers = state.get("BLOCKERS") if isinstance(state.get("BLOCKERS"), list) else []
-    inventory = state.get("active_rcg18_execution_output_abi_runtime_control_inventory")
-    inventory = inventory if isinstance(inventory, dict) else {}
-    consumed = inventory.get("consumed_hotfix_ordinals")
-    consumed = consumed if isinstance(consumed, list) else []
-    stability = str(inventory.get("source_stability", ""))
-    rank = 2 if stability in {"POST", "STABLE", "SOURCE_STABLE", "CLEAN"} else 0
-    rank = max(rank, 3 if state.get("ENGINEERING_READY") is True else 0)
-    rank = max(rank, 4 if state.get("CLEAN_VALIDATED") is True else 0)
-    authority_status = next(
-        (
-            str(state[key])
-            for key in (
-                "AUTHORITY_STATUS",
-                "authority_status",
-                "active_authority_status",
-                "scientific_authority_status",
-            )
-            if isinstance(state.get(key), str) and str(state[key]).strip()
-        ),
-        None,
-    )
-    if authority_status is None:
-        authority_status = "OTHER"
-        for event_type in reversed(types):
-            if "REJECTED" in event_type:
-                authority_status = "REJECTED"
-                break
-            if any(token in event_type for token in AUTHORITY_TOKENS):
-                authority_status = "ACTIVE"
-                break
-    return _normalize(
-        {
-            "project_id": state.get("run_id", "V21"),
-            "change_generation": str(_max(events, "source_mutation_count")),
-            "closure_item_count": inventory.get("root_cause_count"),
-            "blocker_ids": sorted(_identifier(x) for x in blockers),
-            "completed_mutation_count": len(consumed),
-            "validation_level": stability or None,
-            "validation_rank": rank,
-            "control_event_count": len(events),
-            "expensive_start_count": _max(events, "fit_start_count")
-            + _max(events, "threshold_calibration_run_count"),
-            "final_boundary_start_count": _max(events, "remote_start_count")
-            + _max(events, "production_start_count"),
-            "authority_status": authority_status,
-            "authority_revision_count": sum(
-                any(token in event_type for token in AUTHORITY_TOKENS)
-                for event_type in types
-            ),
-        }
-    )
-
-
 def _load(value: str) -> dict[str, Any]:
     text = sys.stdin.read() if value == "-" else Path(value).read_text(encoding="utf-8")
     return _strict_json_text(text, "guard JSON input")
@@ -383,7 +297,7 @@ def _validate_snapshot(snapshot: Any, label: str) -> dict[str, Any]:
         raise ValueError(f"{label} fields do not match schema V3")
     if snapshot.get("schema_id") != SCHEMA_ID:
         raise ValueError(f"{label} schema is incompatible; capture a fresh V3 baseline")
-    if snapshot.get("profile") not in {"git", "generic", "v21"}:
+    if snapshot.get("profile") not in {"git", "generic"}:
         raise ValueError(f"{label} has an invalid profile")
     if snapshot.get("mode") not in MODES:
         raise ValueError(f"{label} has an invalid mode")
@@ -438,7 +352,6 @@ def _validate_snapshot(snapshot: Any, label: str) -> dict[str, Any]:
 
 def capture(
     repo: Path | None,
-    run_state: Path | None,
     facts_path: str | None,
     profile: str,
     mode: str,
@@ -446,26 +359,20 @@ def capture(
     inherited_allowed_path_tokens: list[str] | None = None,
 ) -> dict[str, Any]:
     profile = (
-        "v21" if profile == "auto" and run_state else
-        "generic" if profile == "auto" and facts_path else
-        "git" if profile == "auto" else profile
+        "generic" if profile == "auto" and facts_path
+        else "git" if profile == "auto"
+        else profile
     )
-    if profile == "v21" and not run_state:
-        raise ValueError("v21 profile requires --run-state")
     if profile == "generic" and not facts_path:
         raise ValueError("generic profile requires --facts")
-    if profile == "v21" and facts_path:
-        raise ValueError("v21 profile does not consume --facts")
-    if profile == "generic" and run_state:
-        raise ValueError("generic profile does not consume --run-state")
-    if profile == "git" and (run_state or facts_path):
+    if profile == "git" and facts_path:
         raise ValueError("git profile consumes only --repo")
-    if not any((repo, run_state, facts_path)):
-        raise ValueError("provide --repo, --run-state, or --facts")
+    if not any((repo, facts_path)):
+        raise ValueError("provide --repo or --facts")
     facts = (
-        _v21(run_state.resolve()) if profile == "v21" else
-        _normalize(_load(facts_path)) if profile == "generic" else
-        _normalize({"capabilities": ["vcs"]})
+        _normalize(_load(facts_path))
+        if profile == "generic"
+        else _normalize({"capabilities": ["vcs"]})
     )
     snapshot = {
         "schema_id": SCHEMA_ID,
@@ -503,7 +410,7 @@ def compare(
     max_event_delta: int,
     max_hotfix_delta: int,
     max_expensive_start_delta: int = 1,
-    allow_science_revision: bool,
+    allow_authority_revision: bool,
     allow_final_start: bool,
 ) -> list[dict[str, Any]]:
     if not isinstance(baseline, dict):
@@ -652,7 +559,7 @@ def compare(
         b, a = before.get("authority_revision_count"), after.get("authority_revision_count")
         _regression(out, b, a, "AUTHORITY_REVISION_COUNT_REGRESSED")
         if (
-            not allow_science_revision
+            not allow_authority_revision
             and before.get("authority_status") == "REJECTED"
             and isinstance(b, int)
             and isinstance(a, int)
@@ -694,7 +601,7 @@ def _test_codes(before: dict[str, Any], after: dict[str, Any], *, allow_final: b
             max_event_delta=budget["events"],
             max_hotfix_delta=budget["mutations"],
             max_expensive_start_delta=budget["expensive"],
-            allow_science_revision=False,
+            allow_authority_revision=False,
             allow_final_start=allow_final,
         )
     }
@@ -709,9 +616,9 @@ def _self_test() -> None:
     migration0 = _test_snapshot({"project_id": "migration", "change_generation": "E1", "validation_rank": 1})
     migration1 = _test_snapshot({"project_id": "migration", "change_generation": "E1", "validation_rank": 3})
     assert not _test_codes(migration0, migration1)
-    science0 = _test_snapshot({"project_id": "science", "authority_status": "REJECTED", "authority_revision_count": 1})
-    science1 = _test_snapshot({"project_id": "science", "authority_status": "OTHER", "authority_revision_count": 2})
-    assert "REJECTED_AUTHORITY_BRANCH_REOPENED_WITHOUT_REBASE" in _test_codes(science0, science1)
+    authority0 = _test_snapshot({"project_id": "governed", "authority_status": "REJECTED", "authority_revision_count": 1})
+    authority1 = _test_snapshot({"project_id": "governed", "authority_status": "OTHER", "authority_revision_count": 2})
+    assert "REJECTED_AUTHORITY_BRANCH_REOPENED_WITHOUT_REBASE" in _test_codes(authority0, authority1)
     release0 = _test_snapshot({"project_id": "release", "final_boundary_start_count": 0})
     release1 = _test_snapshot({"project_id": "release", "final_boundary_start_count": 1})
     assert "FINAL_BOUNDARY_STARTED_BEFORE_GUARD_RELEASE" in _test_codes(release0, release1)
@@ -818,9 +725,8 @@ def _add_capture_args(parser: argparse.ArgumentParser) -> None:
         "--allowed-paths-from",
         help="newline-delimited planned repository paths; freeze only when taking a baseline",
     )
-    parser.add_argument("--run-state", type=Path)
     parser.add_argument("--facts")
-    parser.add_argument("--profile", choices=("auto", "git", "generic", "v21"), default="auto")
+    parser.add_argument("--profile", choices=("auto", "git", "generic"), default="auto")
     parser.add_argument("--mode", choices=tuple(MODES), default="STANDARD")
 
 
@@ -838,10 +744,7 @@ def _main() -> int:
         "--max-mutation-delta", "--max-hotfix-delta", dest="max_hotfix_delta", type=int
     )
     check.add_argument("--max-expensive-start-delta", type=int)
-    check.add_argument(
-        "--allow-authority-revision", "--allow-science-revision",
-        dest="allow_science_revision", action="store_true",
-    )
+    check.add_argument("--allow-authority-revision", action="store_true")
     check.add_argument("--allow-final-start", action="store_true")
     commands.add_parser("self-test")
     args = parser.parse_args()
@@ -851,7 +754,6 @@ def _main() -> int:
     if args.command == "snapshot":
         current = capture(
             args.repo,
-            args.run_state,
             args.facts,
             args.profile,
             args.mode,
@@ -865,7 +767,6 @@ def _main() -> int:
         inherited_allowed = baseline["repo"].get("allowed_path_tokens")
     current = capture(
         args.repo,
-        args.run_state,
         args.facts,
         args.profile,
         args.mode,
@@ -885,7 +786,7 @@ def _main() -> int:
         max_event_delta=budgets[0],
         max_hotfix_delta=budgets[1],
         max_expensive_start_delta=budgets[2],
-        allow_science_revision=args.allow_science_revision,
+        allow_authority_revision=args.allow_authority_revision,
         allow_final_start=args.allow_final_start,
     )
     scope_codes = {
