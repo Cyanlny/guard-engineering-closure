@@ -84,7 +84,7 @@ Accept an expansion only when every applicable condition is true:
 - the affected objects and all direct consumers are finite and known;
 - one canonical authority exists for each changed contract or value;
 - the change fits one consolidated mutation tranche and the existing validation ladder;
-- it does not use protected, held-out, formal, production, or release results to choose a governed value;
+- it does not use protected, withheld-evaluation, formal, production, or release results to choose a governed value;
 - a cheap real boundary smoke can run before any expensive acceptance;
 - expected closure benefit exceeds the complexity tax and invalidation cost;
 - the requested stop point remains reachable without another anticipated expansion.

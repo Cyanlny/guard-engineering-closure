@@ -1,6 +1,6 @@
 # Guard Engineering Closure
 
-A reusable Codex skill for keeping complex engineering work bounded, root-cause-first, and verifiably convergent.
+A project-agnostic Codex skill for keeping complex engineering work bounded, root-cause-first, and verifiably convergent.
 
 It is designed for multi-stage builds, scientific pipelines, migrations, releases, large dirty worktrees, repeated patch-and-validation loops, and other tasks where scope drift or expensive revalidation can prevent closure.
 
@@ -35,6 +35,10 @@ Restart Codex after installation so it discovers the new skill.
 ## Repository layout
 
 The installable skill is in [`guard-engineering-closure/`](guard-engineering-closure/). Publishing documentation stays at the repository root so the skill directory itself remains a valid Codex skill package.
+
+## Project-specific adapters
+
+The public skill contains no project-specific run-state adapter. Normalize existing project state into the documented generic closure-facts contract and pass it with `--profile generic --facts <json>`. Keep private field mappings and project overlays in the project that owns them; do not add them to this reusable core.
 
 ## Validation
 

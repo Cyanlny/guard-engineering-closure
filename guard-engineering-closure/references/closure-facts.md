@@ -58,7 +58,11 @@ Do not invent a capability merely because the guard supports it. For example, a 
 
 Supply `delegation` only when subagents are explicitly authorized and actually relevant. Freeze `delegated_task_ids` before launch. Every delegated task must follow [subagent-containment.md](subagent-containment.md); the script rejects delegated mutators, delegated expensive runs, recursive delegation, task-set growth, and mode-specific concurrency excess. In `RESCUE`, two independent reviewers require the baseline fact `independent_authority_review_required=true`; otherwise the machine limit is one.
 
-If a project-specific profile does not expose delegation facts, enforce the same limits in the in-memory Closure Card. Do not expand the project's canonical schema merely to feed this guard.
+If the normalized project facts do not expose delegation state, enforce the same limits in the in-memory Closure Card. Do not expand the project's canonical schema merely to feed this guard.
+
+## Normalize project-specific state
+
+Keep project adapters private and read-only. Map the project's existing canonical state into this exact generic contract before invoking the guard; do not add a project name, private field mapping, or one-off profile to the reusable script. The adapter may select and aggregate existing facts, but it must not infer authority, terminal state, writer absence, or PASS from naming conventions. Validate the normalized facts with `--profile generic --facts <json>` and retain the project source identity separately in the Closure Card.
 
 ## Map common projects
 
