@@ -17,13 +17,12 @@ Apply `karpathy-guidelines` whenever reading, designing, reviewing, or changing 
 
 ## Load only applicable detail
 
-- Additional project facts: [references/closure-facts.md](references/closure-facts.md).
+- Additional or project-specific facts: normalize them through [references/closure-facts.md](references/closure-facts.md); keep private adapters outside this reusable core.
 - Repeated reads, hashes, PASS reuse, or caches: [references/verification-economy.md](references/verification-economy.md).
 - Git drift, context recovery, concurrent writers, or instruction conflict: [references/campaign-state-discipline.md](references/campaign-state-discipline.md).
 - Missing scope or proposed expansion: [references/boundary-adjudication.md](references/boundary-adjudication.md).
 - Multi-axis topology, authority, denominator, aggregation, or terminal semantics: [references/pre-mutation-contract.md](references/pre-mutation-contract.md).
 - Authorized delegation: [references/subagent-containment.md](references/subagent-containment.md).
-- V21 work only: [references/v21-rescue-profile.md](references/v21-rescue-profile.md); derive live state dynamically and never treat historical examples as authority.
 
 Read each selected reference completely before the action it governs. Do not load unrelated references for reassurance.
 
