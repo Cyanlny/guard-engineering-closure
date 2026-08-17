@@ -84,7 +84,7 @@ Accept an expansion only when every applicable condition is true:
 - the affected objects and all direct consumers are finite and known;
 - one canonical authority exists for each changed contract or value;
 - the change fits one consolidated mutation tranche and the existing validation ladder;
-- it does not use protected, withheld-evaluation, formal, production, or release results to choose a governed value;
+- it does not use protected, held-out, formal, production, or release results to choose a governed value;
 - a cheap real boundary smoke can run before any expensive acceptance;
 - expected closure benefit exceeds the complexity tax and invalidation cost;
 - the requested stop point remains reachable without another anticipated expansion.
@@ -103,13 +103,15 @@ Return exactly one outcome:
 For `ACCEPT_BOUNDED_REBASE`:
 
 1. update the in-memory Closure Card;
-2. capture one new guard baseline;
+2. capture one new guard baseline linked to the predecessor snapshot;
 3. freeze the accepted items, objects, mutation count, and validation impact;
 4. invalidate only the declared dependency closure;
 5. execute one mutation tranche and one real boundary smoke;
 6. resume ordinary monotonic closure.
 
 Do not recursively adjudicate the adjudication. A rejected proposal cannot return without new invalidating evidence. If the accepted delta fails its first real smoke or reveals another independent root, stop and compare the existing salvage path with `RETIRE_AND_REWRITE`; do not grant a second automatic expansion.
+
+Rebaseline must preserve cumulative completed/event/start/authority counters and the existing rescue deadline. It cannot reset budgets, erase prior paths/items, or turn a waiver into technical PASS. Start a new campaign only after the predecessor is explicitly completed or retired.
 
 ## Mode policy
 

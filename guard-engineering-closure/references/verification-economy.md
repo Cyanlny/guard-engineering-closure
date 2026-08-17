@@ -96,6 +96,8 @@ project_id
 
 Every key component must be a nonempty immutable content or implementation identity, not a mutable label such as `current` or `latest`.
 
+When the scope guard freezes logical objects or protected content, bind the applicable object-set/protected-content identity into the dependency-closure component. Path equality alone is insufficient for a pre-dirty file.
+
 Treat execution purpose as exact. Diagnostic, test, calibration, migration, remote, release, and production results are not interchangeable even when their source bytes match.
 
 Do not recompute a hash solely for reassurance. Before every recheck, emit one invalidation reason code.
@@ -182,6 +184,8 @@ Use `scripts/verification_economy.py`:
 For `--paths-from`, select only tracked or currently untracked repository objects. Reject `.git`, intermediate symlinks, path escapes, and special files; never follow an untrusted path outside the repository to create a cache identity.
 
 Keep snapshots ephemeral and outside repositories, canonical evidence, and scientific identities. Do not claim reuse from a baseline whose `verification_status` is not `PASS`.
+
+`--writer-free` records a caller assertion. It does not discover leases or process trees. Use the writer-proof contract in `execution-boundary-integrity.md` before supplying it.
 
 Run the planner once per meaningful checkpoint, not once per message. For a small or clean Git change, ordinary `git diff` plus existing blob IDs may already be sufficient; do not invoke the planner merely because it exists.
 

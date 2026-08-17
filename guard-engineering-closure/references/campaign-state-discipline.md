@@ -23,20 +23,31 @@ target
 stop_point
 workspace_identity
 repository_identity_or_manifest
+campaign_identity + predecessor baseline identity
 HEAD_or_change_generation
 dirty_path_set_identity
 planned_allowed_path_set_identity
+changed/allowed object identities + protected-content identity
 closure_item_ids
 authority_revision
 highest_validated_layer
-active_process_identity
+active_process/lease + writer-proof identity
 verification_key
 execution_purpose
+rescue_deadline when applicable
 ```
 
 Use existing identities. Prefer repository path plus Git HEAD, changed-path tokens, and a predeclared allowed-path token set, or a project-native package, migration, dataset, or artifact manifest. Current dirty paths describe state; planned allowed paths describe mutation authority. Do not conflate them or introduce a new source identity merely for this tuple.
 
 The tuple is a scheduling checkpoint, not canonical project evidence. Keep it in the in-memory Closure Card or an ephemeral guard snapshot outside the repository. Reuse it until a named state-changing event invalidates it.
+
+## Preserve baseline lineage
+
+An accepted rebaseline creates one successor baseline linked to the predecessor snapshot. Preserve the campaign identity, cumulative completed/event/start/authority counters, prior accepted-rebaseline count, and applicable rescue deadline. Do not create an unrelated fresh baseline to reset a root, path, mutation, event, expensive-run, delegation, or time budget.
+
+Use a new campaign identity only for a genuinely new requested outcome or an explicitly retired predecessor. A new conversation, agent, branch name, or elapsed deadline does not create a new campaign.
+
+Ordinary checkpoint comparison inherits the predecessor lineage. A scope-changing snapshot is valid only through the guard's explicit accepted-rebaseline path; it remains a project-authorized assertion, not proof that the expansion was scientifically or publicly authorized.
 
 ## Use Git without turning it into task management
 
@@ -59,6 +70,10 @@ Do not use Git to:
 Inspect `git status`, `git diff`, and existing object IDs before reading full files. Preserve unrelated modifications. If branch isolation would materially reduce conflict, propose it before mutation; do not silently reorganize the user's repository.
 
 Treat a changed HEAD as `WORKTREE_DRIFT` unless it is the planned checkpoint just completed. A newly dirty path is valid only when it was dirty at baseline or appears in the frozen planned set. Re-capture the baseline once after an authorized commit or source-generation transition. Do not continue with a stale baseline.
+
+Path membership is not permission to rewrite every symbol in that file. For a large or pre-dirty surface, freeze logical object IDs such as symbols, schema rows, migration IDs, task roles, or bounded hunks, plus an aggregate identity for protected content outside them. Use a project-aware mapper or existing verification snapshot; do not build a language parser into the generic guard.
+
+Treat writer absence as an assertion requiring a method. Prefer a current exclusive lease or workspace/cwd/PID-tree proof bound to process start time and execution purpose. Process-name absence, a stale PID file, or a lost terminal handle is insufficient.
 
 ## Bound context and tool output
 
@@ -121,6 +136,9 @@ Use the narrowest applicable class:
 - `CONTEXT_RECONSTRUCTION_REQUIRED`: no trustworthy compact state can support the next action;
 - `CACHE_IDENTITY_MISMATCH`: a cache or prior PASS does not match the exact reuse key;
 - `INSTRUCTION_DRIFT`: a delayed, delegated, or new instruction conflicts with the frozen target or stop point.
+- `BASELINE_LINEAGE_DRIFT`: campaign, predecessor, cumulative budget, or rescue deadline differs from the accepted lineage.
+- `PROTECTED_CONTENT_DRIFT`: bytes or logical objects outside the frozen mutation frontier changed.
+- `WRITER_PROOF_STALE`: the asserted writer state is missing, stale, or bound to another workspace or purpose.
 
 Do not resolve conflict by majority vote, latest file mtime, longest audit, or another full scan. A later direct user instruction may supersede an earlier target, but first state the scope, identity, and validation consequences and obtain any required rebaseline.
 
@@ -177,5 +195,8 @@ Use the narrowest reason:
 - `CONTEXT_RECONSTRUCTION_BUDGET_EXHAUSTED`;
 - `CACHE_REUSE_REJECTED`;
 - `INSTRUCTION_CONFLICT_REQUIRES_REBASE`.
+- `BASELINE_LINEAGE_REJECTED`;
+- `PROTECTED_CONTENT_REBASE_REQUIRED`;
+- `WRITER_PROOF_REQUIRED`.
 
 Do not create a project event or receipt merely because this ephemeral guard reports one of these reasons. Use the project's existing mandatory transition only when state must actually change.
