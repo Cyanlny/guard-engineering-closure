@@ -20,8 +20,11 @@ Apply `karpathy-guidelines` whenever reading, designing, reviewing, or changing 
 - Additional or project-specific facts: normalize them through [references/closure-facts.md](references/closure-facts.md); keep private adapters outside this reusable core.
 - Repeated reads, hashes, PASS reuse, or caches: [references/verification-economy.md](references/verification-economy.md).
 - Git drift, context recovery, concurrent writers, or instruction conflict: [references/campaign-state-discipline.md](references/campaign-state-discipline.md).
+- Canonical run state, event/projection replay, leases, terminal recovery, or retry evidence: [references/run-state-integrity.md](references/run-state-integrity.md).
+- Long/native execution, writer proof, validation credibility, artifact admission, or final release: [references/execution-boundary-integrity.md](references/execution-boundary-integrity.md).
 - Missing scope or proposed expansion: [references/boundary-adjudication.md](references/boundary-adjudication.md).
 - Multi-axis topology, authority, denominator, aggregation, or terminal semantics: [references/pre-mutation-contract.md](references/pre-mutation-contract.md).
+- Retire/rewrite, migration bootstrap, or handoff package: [references/retirement-handoff.md](references/retirement-handoff.md).
 - Authorized delegation: [references/subagent-containment.md](references/subagent-containment.md).
 
 Read each selected reference completely before the action it governs. Do not load unrelated references for reassurance.
@@ -61,11 +64,11 @@ This card is scheduling state, not project evidence. Keep full logs, payloads, m
 
 Use `scripts/closure_guard.py` only at intake, terminal, accepted rebaseline, pre-mutation, pre-long-validation, source-stability barrier, or trust boundary.
 
-- `snapshot` records Git/project facts and freezes the planned allowed-path set with `--allowed-paths-from`.
-- `compare` inherits that allowed-path set, verifies the V3 baseline hash, enforces monotonic facts, and reports `status=PASS|BLOCKED` plus `recommended_outcome=CONTINUE|REBASE_REQUIRED|BLOCKED`.
+- `snapshot` records Git/project facts, freezes planned paths/objects, and may bind an accepted rebaseline to one predecessor snapshot.
+- `compare` inherits that allowed-path set, verifies the V5 baseline hash and lineage, enforces monotonic facts, and reports `status=PASS|BLOCKED` plus `recommended_outcome=CONTINUE|REBASE_REQUIRED|BLOCKED`.
 - `self-test` exercises integrity, scope, monotonicity, delegation, authority, and release rules without touching a project.
 
-Snapshots are ephemeral V3 objects outside repositories and canonical evidence. Re-capture older schemas; do not build compatibility code for temporary guard state. A nonzero comparison is a stop condition. Reuse one result when the state signature is unchanged instead of checking again for commentary.
+Snapshots are ephemeral V5 objects outside repositories and canonical evidence. Re-capture older schemas; do not build compatibility code for temporary guard state. A nonzero comparison is a stop condition. Reuse one result when the state signature is unchanged instead of checking again for commentary.
 
 Distinguish enforcement:
 
@@ -149,6 +152,14 @@ Use `scripts/verification_economy.py` and the R0–R4 policy in the reference.
 Do not build cross-epoch adoption or a generic cache platform during rescue merely to avoid one final run.
 
 ## Make surgical changes and expose hidden failures early
+
+Before mutation, apply Surface Economy to every in-scope file, gate, interface, and validator:
+
+```text
+KEEP | MERGE | INLINE | REMOVE | DEFER
+```
+
+Keep a surface only when a unique responsibility, active consumer, trust boundary, or compatibility obligation proves it necessary. A new surface is admissible only when the current root cannot close through an existing canonical path. In `RESCUE`, defer adjacent cleanup by default; remove only a duplicated authority, gate, or validator that directly blocks closure. Enforce growth through the existing allowed-path and allowed-object guard rather than adding a surface-count schema or another gate.
 
 - Touch only frozen files and symbols; preserve unrelated user changes.
 - Migrate all direct producers before enabling a stricter shared validator.
