@@ -5,6 +5,7 @@ Use this protocol before the first source mutation in a multi-stage or multi-axi
 ## Contents
 
 - Scope layers
+- Surface Economy
 - Proof and authority states
 - Topology completeness record
 - Project mappings
@@ -41,6 +42,22 @@ Do not use this layer to pre-authorize a new scientific value, public contract, 
 Place optional hardening, cleanup, platform work, rejected candidates, and post-stop-point improvements here. Authorization to perform this work later does not activate it now.
 
 Anything that fits none of the three layers requires controlled boundary adjudication before mutation.
+
+## Surface Economy
+
+Before mutation, classify every in-scope file, gate, interface, and validator exactly once:
+
+```text
+KEEP | MERGE | INLINE | REMOVE | DEFER
+```
+
+- `KEEP`: one unique responsibility, active consumer, trust boundary, or compatibility obligation requires the surface.
+- `MERGE`: two surfaces express the same authority or decision and one canonical owner can serve every active consumer.
+- `INLINE`: the surface has one bounded caller and no independent trust or compatibility boundary.
+- `REMOVE`: a duplicate authority, gate, validator, or unreachable interface directly obstructs the frozen closure.
+- `DEFER`: the change is adjacent cleanup, speculative abstraction, or future capability rather than a requirement of the current root.
+
+Reject a new surface unless the current root cannot close through an existing canonical path and the new responsibility is finite, directly consumed, and covered by the frozen verification ladder. In `RESCUE`, default to `DEFER`; only `MERGE`, `INLINE`, or `REMOVE` a duplicate authority/gate/validator when doing so directly closes the current root. Use the existing allowed-path and allowed-object identities to detect growth. Do not add a surface counter, public schema, or another gate merely to enforce this decision.
 
 ## Proof and authority states
 
@@ -91,8 +108,12 @@ Prove every applicable field before mutation:
 10. selection, admission, migration, publication, release, or deployment effects;
 11. sole validator and changed-interface mutation cases;
 12. cheapest real boundary smoke and observable success criteria.
+13. exact allowed logical objects plus protected-content identity outside them;
+14. scoped waivers, their invalidation conditions, and non-transferability.
 
 Do not infer a missing field from loop bounds, test fixtures, previous artifacts, local constants, library defaults, current results, or the shape of an incomplete planner.
+
+An already dirty file is not blanket mutation authority. When the requested edit touches a pre-dirty file, identify the allowed symbols/rows/hunks and preserve an identity for unrelated content.
 
 `TOPOLOGY_COMPLETE=true` requires every applicable field to be unique, authority-backed where governed, and internally cardinality-consistent.
 
