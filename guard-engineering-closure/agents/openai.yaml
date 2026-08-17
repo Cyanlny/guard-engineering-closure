@@ -1,4 +1,4 @@
 interface:
   display_name: "Engineering Closure Guard"
   short_description: "Think first; bound cause, scope, reuse, and drift"
-  default_prompt: "Use $guard-engineering-closure with $karpathy-guidelines to reason before acting, isolate the root cause, admit only justified scope, and close one bounded path."
+  default_prompt: "Use $guard-engineering-closure with $karpathy-guidelines to freeze one bounded closure, classify state roles and surface economy, then make the smallest verifiable change."
