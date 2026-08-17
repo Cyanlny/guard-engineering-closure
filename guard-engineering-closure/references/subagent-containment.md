@@ -80,7 +80,7 @@ The main agent remains the only agent permitted to:
 - make or activate a scientific, public-contract, migration, release, or production decision;
 - send signals, kill processes, write to live stdin, or recover a running transaction.
 
-Subagents are read-only by default. They must not access credentials, patient rows, protected records, held-out/formal results, running scientific logs, partial artifacts, or mutable cache members unless an active contract explicitly permits that exact read. They must not spawn further subagents.
+Subagents are read-only by default. They must not access credentials, protected records or row-level data, withheld/formal evaluation results, running governed-compute logs, partial artifacts, or mutable cache members unless an active contract explicitly permits that exact read. They must not spawn further subagents.
 
 A subagent may run a cheap read-only static command only when listed in the charter and guaranteed not to write the repository or shared validation workspace. If a command may create caches, compiled files, test artifacts, locks, or receipts, the main agent must run it later in an isolated location or omit it.
 
