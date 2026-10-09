@@ -1,20 +1,21 @@
 # Guard Engineering Closure
 
-A project-agnostic Codex skill for keeping complex engineering work bounded, root-cause-first, and verifiably convergent.
+A project-agnostic Codex skill for bounded, root-cause-first closure of complex engineering and scientific work.
 
-It is designed for multi-stage builds, scientific pipelines, migrations, releases, large dirty worktrees, repeated patch-and-validation loops, and other tasks where scope drift or expensive revalidation can prevent closure.
+Current release: **V9_OPTIMIZED_STABLE**. The machine schema remains `ENGINEERING_CLOSURE_GUARD_SNAPSHOT_V9`.
 
-## What it enforces
+## What it does
 
-- Think and classify before mutation.
-- Freeze a bounded closure card and explicit stop point.
-- Expand scope only through controlled, evidence-backed rebaselining.
-- Repair the producer-to-consumer-to-validator chain in one bounded tranche.
-- Classify state objects as authority, projection, terminal evidence, or lease.
-- Decide whether each file, gate, interface, and validator should be kept, merged, inlined, removed, or deferred.
-- Reuse unchanged audit conclusions and focused verification by exact identity.
-- Keep Git, context, cache, worktree drift, and sub-agent activity contained.
-- Run trust-boundary acceptance once per stable source epoch.
+- Keep ordinary isolated, reversible, low-impact work on the native-only LIGHT route.
+- Classify the current legal action separately from later execution permission and project acceptance.
+- Audit broadly, then limit changes to the smallest proven causal delta and necessary direct consumers.
+- Require scientific closure through **real input → necessary scientific computation → real result → actual downstream consumption**.
+- Reuse qualified evidence and valid scientific results; rebuild, reseal, and revalidate only affected dependencies.
+- Preserve authority, active-object identity, healthy running generations, bounded recovery, and safe retirement.
+- Check resource admission and reclaim eligible cache through existing project-native workflows.
+- Load specialized references only when their risk changes the decision; support explicitly requested project-instruction drafting and governance.
+
+Guard is not a scheduler, cache service, project state database, or scientific validator. Necessary deliverables are not automatically new control mechanisms. V9 PASS/CONTINUE means no machine veto, not permission or project PASS; project-native authority and validators remain decisive.
 
 ## Install with Codex
 
@@ -36,22 +37,32 @@ Restart Codex after installation so it discovers the new skill.
 
 ## Repository layout
 
-The installable skill is in [`guard-engineering-closure/`](guard-engineering-closure/). Publishing documentation stays at the repository root so the skill directory itself remains a valid Codex skill package.
+The installable skill is in [`guard-engineering-closure/`](guard-engineering-closure/): **13 files, 7 conditional references, and 4 scripts**. Publishing documentation stays at the repository root.
 
-## Project-specific adapters
+Start with [SKILL.md](guard-engineering-closure/SKILL.md). Read the [V9 machine contract](guard-engineering-closure/references/v9-machine-contract.md) before invoking machine checks. Risk, complexity, or Git alone does not activate V9; required project control facts must come from attributable authority, not invented caller assertions.
 
-The public skill contains no project-specific run-state adapter. Normalize existing project state into the documented generic closure-facts contract and pass it with `--profile generic --facts <json>`. Keep private field mappings and project overlays in the project that owns them; do not add them to this reusable core.
+The verification-reuse helper plans selected-object reuse only. It does not run a project validator, establish permission, or grant acceptance. Keep project-specific adapters and state outside this reusable package.
 
-When a project has run state, classify every object as `AUTHORITY`, `PROJECTION`, `TERMINAL_EVIDENCE`, or `LEASE`, select exactly one authority, and verify deterministic replay. V5 documents an append-only SQLite pattern without turning the skill into a state framework.
+## Source identity and verification
 
-## Surface economy
+This publication preserves the exact installed S′ source package:
 
-Before mutation, classify each in-scope file, gate, interface, and validator as `KEEP`, `MERGE`, `INLINE`, `REMOVE`, or `DEFER`. New public or control surfaces require proof that the current root cannot close through an existing canonical path. Rescue work defaults to deferring adjacent cleanup.
+```text
+e537eec6549a23a9ba738966a068d38895adc2af1def2f6dd0e72be5edef9ef3
+```
 
-## Validation
+This is a package SHA-256, not a Git commit or Git tree ID: sort file paths relative to the skill root and hash the concatenation of each path, a NUL byte, its lowercase file SHA-256, and a newline.
 
-The release is checked with the Codex skill validator, its two bundled self-test suites, Python bytecode compilation, and a scan for local paths, credentials, private keys, and generated cache files.
+Recorded source-release evidence includes:
+
+- 180 Guard scenarios and 11 verification-helper scenarios.
+- A 505-event trace with SHA-256 `b902a6713c4ff3eaae4365688630547c5099c3b35a08f1056a2ee0839f61929a`.
+- 160 violations: 157 reachable witnesses and 3 contract-unreachable cases, with no unknown or defective classifications.
+- The original 33 golden cases: **29 unchanged plus 4 declared M identity-safety differences** (verification-reuse, fresh-seal, epoch-change, dependency-change). S′ adds no machine differences.
+
+These are recorded source-release results, not a claim that publication reran the full suites. Publication rechecks package identity, structure, links, syntax, skill validation, and obvious private-path/credential patterns. Local archives, evaluation answers, logs, and private artifacts are not part of this repository.
 
 ## License
 
 No open-source license is included yet. Copyright remains with the repository owner until a license is added.
+

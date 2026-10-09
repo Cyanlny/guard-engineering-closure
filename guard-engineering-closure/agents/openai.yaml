@@ -1,4 +1,4 @@
 interface:
   display_name: "Engineering Closure Guard"
-  short_description: "Think first; bound cause, scope, reuse, and drift"
-  default_prompt: "Use $guard-engineering-closure with $karpathy-guidelines to freeze one bounded closure, classify state roles and surface economy, then make the smallest verifiable change."
+  short_description: "Closure for drift, authority, concurrency, and costly retries"
+  default_prompt: "Use $guard-engineering-closure to choose the first sufficient authorized route; use V9 machine checks only when an enforced predicate can change the permitted next action."

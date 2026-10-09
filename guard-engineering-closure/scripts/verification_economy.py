@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -18,13 +19,15 @@ from typing import Any
 SCHEMA_ID = "VERIFICATION_ECONOMY_SNAPSHOT_V3"
 
 
-def _run(argv: list[str], cwd: Path) -> bytes:
+def _run(argv: list[str], cwd: Path, input_bytes: bytes | None = None) -> bytes:
     result = subprocess.run(
         argv,
         cwd=str(cwd),
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        input=input_bytes,
+        env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"} if argv[0] == "git" else None,
     )
     return result.stdout
 
@@ -110,7 +113,7 @@ def _normalize_relative_path(repo: Path, value: str) -> str:
     candidate = Path(value)
     if candidate.is_absolute():
         try:
-            candidate = candidate.resolve().relative_to(repo.resolve())
+            candidate = candidate.relative_to(repo.resolve())
         except ValueError as exc:
             raise ValueError(f"path escapes repository: {value}") from exc
     normalized = Path(os.path.normpath(str(candidate)))
@@ -120,6 +123,7 @@ def _normalize_relative_path(repo: Path, value: str) -> str:
         or ".git" in normalized.parts
     ):
         raise ValueError(f"invalid repository-relative path: {value}")
+    _reject_intermediate_symlinks(repo, candidate.as_posix())
     return normalized.as_posix()
 
 
@@ -131,10 +135,12 @@ def _reject_intermediate_symlinks(repo: Path, relative_path: str) -> None:
             raise ValueError(f"intermediate symlink is prohibited: {relative_path}")
 
 
-def _enumerate_paths(repo: Path, scope: str, paths_from: str | None) -> tuple[list[str], set[str], set[str]]:
+def _enumerate_paths(repo: Path, scope: str, paths_from: str | None,
+                     uncertain: set[str] | None = None) -> tuple[list[str], set[str], set[str]]:
     tracked_index = _tracked_index(repo)
     tracked = set(tracked_index)
-    dirty = set(_nul_paths(_run(["git", "diff", "HEAD", "--name-only", "-z"], repo)))
+    dirty = set(_nul_paths(_run(["git", "-c", "diff.autoRefreshIndex=false", "diff", "HEAD", "--name-only", "-z"], repo)))
+    dirty.update(uncertain or ())
     untracked = set(
         _nul_paths(_run(["git", "ls-files", "--others", "--exclude-standard", "-z"], repo))
     )
@@ -158,6 +164,131 @@ def _enumerate_paths(repo: Path, scope: str, paths_from: str | None) -> tuple[li
     for relative_path in selected:
         _reject_intermediate_symlinks(repo, relative_path)
     return sorted(selected), tracked, dirty
+
+
+def _object_type(mode: int) -> str:
+    if stat.S_ISREG(mode):
+        return "file"
+    if stat.S_ISLNK(mode):
+        return "symlink"
+    raise ValueError("unsupported non-regular object")
+
+
+def _qualified_identity(entry: dict[str, Any]) -> bool:
+    if not entry.get("exists") or not isinstance(entry.get("stat_key"), list):
+        return False
+    try:
+        kind = _object_type(entry["stat_key"][2])
+    except (ValueError, IndexError, TypeError):
+        return False
+    identity = entry.get("content_identity", "")
+    source = entry.get("identity_source")
+    if not isinstance(identity, str) or not isinstance(source, str):
+        return False
+    return bool(
+        re.fullmatch(kind + r":sha256:[0-9a-f]{64}", identity)
+        and source in {"fresh_content_hash", "metadata_guarded_cache"}
+        or re.fullmatch(kind + r":git-blob:(?:[0-9a-f]{40}|[0-9a-f]{64})", identity)
+        and source == "git_blob"
+    )
+
+
+def _index_stat_evidence(payload: bytes) -> dict[str, tuple[str, str, tuple[int, ...]]]:
+    """Unknown/incomplete native debug formats cannot qualify an OID shortcut."""
+    pattern = re.compile(
+        rb"  ctime: (\d+):(\d+)\n  mtime: (\d+):(\d+)\n"
+        rb"  dev: (\d+)\tino: (\d+)\n  uid: \d+\tgid: \d+\n"
+        rb"  size: (\d+)\tflags: [0-9a-fA-F]+\n"
+    )
+    result: dict[str, tuple[str, str, tuple[int, ...]]] = {}
+    cursor = 0
+    while cursor < len(payload):
+        end = payload.find(b"\0", cursor)
+        if end < 0:
+            return {}
+        match = pattern.match(payload, end + 1)
+        if match is None:
+            return {}
+        header = payload[cursor:end].split(b"\t", 1)
+        if len(header) != 2:
+            return {}
+        fields = header[0].split()
+        if len(fields) != 3 or fields[2] != b"0":
+            return {}
+        mode, oid = fields[:2]
+        path = header[1].decode("utf-8")
+        csec, cnsec, msec, mnsec, dev, ino, size = map(int, match.groups())
+        if path in result or cnsec >= 10**9 or mnsec >= 10**9:
+            return {}
+        result[path] = (mode.decode("ascii"), oid.decode("ascii"),
+                        (dev, ino, size, msec * 10**9 + mnsec, csec * 10**9 + cnsec))
+        cursor = match.end()
+    return result
+
+
+def _git_identity_context(repo: Path) -> tuple[dict[str, tuple[str, str]], set[str], str]:
+    """Prove the index shortcut's coordinates and raw representation, not authority."""
+    git = ["git", "-c", "core.fsmonitor=false", "-c", "diff.ignoreSubmodules=none", "-c", "diff.autoRefreshIndex=false"]
+    index_raw = _run(git + ["ls-files", "-s", "-z"], repo)
+    index: dict[str, tuple[str, str]] = {}
+    unmerged: set[str] = set()
+    for record in index_raw.split(b"\0"):
+        if not record:
+            continue
+        metadata, raw_path = record.split(b"\t", 1)
+        mode, oid, stage = metadata.decode("ascii").split()
+        path = raw_path.decode("utf-8")
+        if stage == "0":
+            index[path] = (mode, oid)
+        else:
+            unmerged.add(path)
+    flags_raw = _run(git + ["ls-files", "-v", "-z"], repo)
+    hidden = {record[2:].decode("utf-8") for record in flags_raw.split(b"\0")
+              if record and (chr(record[0]).islower() or record[:1] == b"S")}
+    staged = _run(git + ["diff", "--no-ext-diff", "--no-textconv", "--cached", "HEAD", "--name-only", "-z"], repo)
+    unstaged = _run(git + ["diff", "--no-ext-diff", "--no-textconv", "--name-only", "-z"], repo)
+    paths = b"".join(path.encode() + b"\0" for path in sorted(index))
+    attrs = _run(git + ["check-attr", "-z", "--stdin", "text", "eol", "filter", "ident", "working-tree-encoding"], repo, paths)
+    fields = attrs.split(b"\0")[:-1]
+    if len(fields) % 3:
+        raise ValueError("malformed Git attribute evidence")
+    converted = {fields[i].decode("utf-8") for i in range(0, len(fields), 3)
+                 if fields[i + 2] not in (b"unspecified", b"unset")}
+    config = subprocess.run(git + ["config", "--null", "--get-regexp", r"^core\.(autocrlf|eol|symlinks)$"],
+                            cwd=str(repo), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if config.returncode not in (0, 1):
+        raise subprocess.CalledProcessError(config.returncode, config.args, config.stdout, config.stderr)
+    effective_config: dict[bytes, bytes] = {}
+    for record in config.stdout.split(b"\0"):
+        if not record:
+            continue
+        key, separator, value = record.partition(b"\n")
+        effective_config[key] = value if separator else b"true"
+    if effective_config.get(b"core.autocrlf", b"false").lower() not in (b"false", b"no", b"off", b"0", b""):
+        converted.update(index)
+    debug_raw = _run(git + ["ls-files", "--stage", "--debug", "-z"], repo)
+    indexed_stats = _index_stat_evidence(debug_raw)
+    observed_stats: dict[str, list[int] | None] = {}
+    stat_unproven: set[str] = set()
+    for path in index:
+        try:
+            _reject_intermediate_symlinks(repo, path)
+            key = _stat_key(repo / path)
+            kind = _object_type(key[2])
+            observed_stats[path] = key
+            # Compare full values ourselves: Git may ignore ctime, subsecond
+            # precision, device or inode under platform/configuration policies.
+            if (indexed_stats.get(path) != (*index[path], (key[0], key[1], key[3], key[4], key[5]))
+                    or (index[path][0] == "120000") != (kind == "symlink")):
+                stat_unproven.add(path)
+        except (OSError, ValueError):
+            observed_stats[path] = None
+            stat_unproven.add(path)
+    uncertain = hidden | converted | unmerged | stat_unproven | set(_nul_paths(staged)) | set(_nul_paths(unstaged))
+    eligible = {path: value for path, value in index.items()
+                if path not in uncertain and value[0] in {"100644", "100755", "120000"}}
+    stamp = _canonical_sha256([[part.hex() for part in (index_raw, flags_raw, staged, unstaged, attrs, config.stdout, debug_raw)], observed_stats])
+    return eligible, uncertain, stamp
 
 
 def _stat_key(path: Path) -> list[int]:
@@ -338,12 +469,16 @@ def capture(
     if baseline is not None:
         _validate_snapshot(baseline, "baseline")
     repo = repo.resolve()
+    top = Path(_run(["git", "rev-parse", "--show-toplevel"], repo).decode().removesuffix("\n")).resolve()
+    if repo != top:
+        raise ValueError("--repo must be the Git working-tree root")
     head = _run(["git", "rev-parse", "HEAD"], repo).decode().strip()
     repo_token = _path_token("repository", str(repo))
-    selected, tracked, dirty = _enumerate_paths(repo, scope, paths_from)
-    index = _tracked_index(repo)
+    eligible, uncertain, git_stamp = _git_identity_context(repo)
+    selected, tracked, dirty = _enumerate_paths(repo, scope, paths_from, uncertain)
     old_entries = _baseline_entries(baseline)
     same_epoch = isinstance(baseline, dict) and baseline.get("epoch") == epoch
+    same_repo = isinstance(baseline, dict) and baseline.get("repo_token") == repo_token
 
     entries: list[dict[str, Any]] = []
     content_hash_reads = 0
@@ -351,6 +486,7 @@ def capture(
     git_oid_reuses = 0
 
     for relative_path in selected:
+        _reject_intermediate_symlinks(repo, relative_path)
         kind = "tracked" if relative_path in tracked else "untracked"
         token = _path_token(kind, relative_path)
         absolute_path = repo / relative_path
@@ -368,26 +504,30 @@ def capture(
             continue
 
         stat_key = _stat_key(absolute_path)
-        clean_tracked = kind == "tracked" and relative_path not in dirty
+        object_type = _object_type(stat_key[2])
+        git_entry = eligible.get(relative_path)
+        clean_tracked = (kind == "tracked" and relative_path not in dirty and git_entry is not None
+                         and (git_entry[0] == "120000") == (object_type == "symlink"))
         old = old_entries.get(token)
         if clean_tracked and not force_content_hash:
-            content_identity = f"git-blob:{index[relative_path]}"
+            content_identity = f"{object_type}:git-blob:{git_entry[1]}"
             identity_source = "git_blob"
             git_oid_reuses += 1
         elif (
             not force_content_hash
             and writer_free
             and same_epoch
+            and same_repo
             and isinstance(old, dict)
             and old.get("stat_key") == stat_key
-            and isinstance(old.get("content_identity"), str)
-            and old.get("content_identity") != "MISSING"
+            and _qualified_identity(old)
+            and old["content_identity"].startswith(object_type + ":sha256:")
         ):
             content_identity = str(old["content_identity"])
             identity_source = "metadata_guarded_cache"
             metadata_hash_reuses += 1
         else:
-            content_identity = f"sha256:{_hash_file(absolute_path, stat_key)}"
+            content_identity = f"{object_type}:sha256:{_hash_file(absolute_path, stat_key)}"
             identity_source = "fresh_content_hash"
             content_hash_reads += 1
 
@@ -401,6 +541,18 @@ def capture(
                 "identity_source": identity_source,
             }
         )
+
+    if (_run(["git", "rev-parse", "HEAD"], repo).decode().strip() != head
+            or _git_identity_context(repo)[2] != git_stamp):
+        raise ValueError("WRITER_CHANGED_DURING_CAPTURE")
+    for relative_path, entry in zip(selected, entries):
+        _reject_intermediate_symlinks(repo, relative_path)
+        absolute_path = repo / relative_path
+        if entry["exists"]:
+            if _stat_key(absolute_path) != entry["stat_key"]:
+                raise ValueError("WRITER_CHANGED_DURING_CAPTURE")
+        elif absolute_path.exists() or absolute_path.is_symlink():
+            raise ValueError("WRITER_CHANGED_DURING_CAPTURE")
 
     snapshot: dict[str, Any] = {
         "schema_id": SCHEMA_ID,
@@ -470,6 +622,8 @@ def plan(
     reusable: list[str] = []
     for token in sorted(after_tokens):
         reasons = list(global_reasons)
+        if not _qualified_identity(after[token]) or (token in before and not _qualified_identity(before[token])):
+            reasons.append("IDENTITY_PROOF_UNQUALIFIED")
         if token in new_tokens:
             reasons.append("NEW_OBJECT")
         elif before[token].get("content_identity") != after[token].get("content_identity"):
