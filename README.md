@@ -42,27 +42,3 @@ The installable skill is in [`guard-engineering-closure/`](guard-engineering-clo
 Start with [SKILL.md](guard-engineering-closure/SKILL.md). Read the [V9 machine contract](guard-engineering-closure/references/v9-machine-contract.md) before invoking machine checks. Risk, complexity, or Git alone does not activate V9; required project control facts must come from attributable authority, not invented caller assertions.
 
 The verification-reuse helper plans selected-object reuse only. It does not run a project validator, establish permission, or grant acceptance. Keep project-specific adapters and state outside this reusable package.
-
-## Source identity and verification
-
-This publication preserves the exact installed S′ source package:
-
-```text
-e537eec6549a23a9ba738966a068d38895adc2af1def2f6dd0e72be5edef9ef3
-```
-
-This is a package SHA-256, not a Git commit or Git tree ID: sort file paths relative to the skill root and hash the concatenation of each path, a NUL byte, its lowercase file SHA-256, and a newline.
-
-Recorded source-release evidence includes:
-
-- 180 Guard scenarios and 11 verification-helper scenarios.
-- A 505-event trace with SHA-256 `b902a6713c4ff3eaae4365688630547c5099c3b35a08f1056a2ee0839f61929a`.
-- 160 violations: 157 reachable witnesses and 3 contract-unreachable cases, with no unknown or defective classifications.
-- The original 33 golden cases: **29 unchanged plus 4 declared M identity-safety differences** (verification-reuse, fresh-seal, epoch-change, dependency-change). S′ adds no machine differences.
-
-These are recorded source-release results, not a claim that publication reran the full suites. Publication rechecks package identity, structure, links, syntax, skill validation, and obvious private-path/credential patterns. Local archives, evaluation answers, logs, and private artifacts are not part of this repository.
-
-## License
-
-No open-source license is included yet. Copyright remains with the repository owner until a license is added.
-
